@@ -1,5 +1,7 @@
 package com.bincher.getCoupon.entity;
 
+import com.bincher.getCoupon.dto.request.auth.SignUpRequestDto;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -20,11 +22,11 @@ public class UserEntity {
     private String telNumber;
     private String role;
 
-    // public UserEntity(SignUpRequestDto dto){
-    //     this.id = dto.getId();
-    //     this.password = dto.getPassword();
-    //     this.phoneNumber = dto.getPhoneNumber();
-    //     this.role = "ROLE_USER";
-    // }
+    public UserEntity(SignUpRequestDto dto){
+        this.id = dto.getId();
+        this.password = dto.getPassword();
+        this.telNumber = dto.getTelNumber();
+        this.role = "ROLE_USER";
+    }
 
 }

@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bincher.getCoupon.dto.request.auth.IdCheckRequestDto;
+import com.bincher.getCoupon.dto.request.auth.SignUpRequestDto;
 import com.bincher.getCoupon.dto.response.auth.IdCheckResponseDto;
+import com.bincher.getCoupon.dto.response.auth.SignUpResponseDto;
 import com.bincher.getCoupon.service.AuthService;
 
 import jakarta.validation.Valid;
@@ -26,6 +28,14 @@ public class AuthController {
     ) {
         ResponseEntity<? super IdCheckResponseDto> response = authService.idCheck(requestBody);
         
+        return response;
+    }
+
+    @PostMapping("/sign-up")
+    public ResponseEntity<? super SignUpResponseDto> signUp(
+        @RequestBody @Valid SignUpRequestDto requestBody
+    ) {
+        ResponseEntity<? super SignUpResponseDto> response = authService.signUp(requestBody);
         return response;
     }
 }
