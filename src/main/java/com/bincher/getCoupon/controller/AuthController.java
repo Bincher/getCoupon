@@ -7,8 +7,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bincher.getCoupon.dto.request.auth.IdCheckRequestDto;
+import com.bincher.getCoupon.dto.request.auth.SignInRequestDto;
 import com.bincher.getCoupon.dto.request.auth.SignUpRequestDto;
 import com.bincher.getCoupon.dto.response.auth.IdCheckResponseDto;
+import com.bincher.getCoupon.dto.response.auth.SignInResponseDto;
 import com.bincher.getCoupon.dto.response.auth.SignUpResponseDto;
 import com.bincher.getCoupon.service.AuthService;
 
@@ -36,6 +38,14 @@ public class AuthController {
         @RequestBody @Valid SignUpRequestDto requestBody
     ) {
         ResponseEntity<? super SignUpResponseDto> response = authService.signUp(requestBody);
+        return response;
+    }
+
+    @PostMapping("/sign-in")
+    public ResponseEntity<? super SignInResponseDto> SignIn(
+        @RequestBody @Valid SignInRequestDto requestBody
+    ){
+        ResponseEntity<? super SignInResponseDto> response = authService.signIn(requestBody);
         return response;
     }
 }
