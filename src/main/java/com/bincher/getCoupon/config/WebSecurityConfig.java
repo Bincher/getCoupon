@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -25,7 +26,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
-@Configurable
+@Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class WebSecurityConfig {
@@ -50,7 +51,7 @@ public class WebSecurityConfig {
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  
         )
         .authorizeHttpRequests(request -> request
-            .requestMatchers("/api/v1/auth/**").permitAll()
+            .requestMatchers("/","/api/v1/auth/**").permitAll()
             .requestMatchers(HttpMethod.GET,"/api/v1/auth/**").permitAll()
             .anyRequest().authenticated()
         )
@@ -70,6 +71,7 @@ public class WebSecurityConfig {
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
 
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
