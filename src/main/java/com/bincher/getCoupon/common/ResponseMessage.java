@@ -8,6 +8,7 @@ public interface ResponseMessage {
     // HTTP Status 400
     String VALIDATION_FAILED = "Validation failed";
     String DUPLICATE_ID = "Duplicate id";
+    String NOT_EXISTED_USER = "This user does not exist";
 
     // HTTP Status 401
     String SIGN_IN_FAIL = "Login information mismatch";

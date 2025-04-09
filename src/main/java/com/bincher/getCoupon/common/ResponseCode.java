@@ -8,6 +8,7 @@ public interface ResponseCode {
     // HTTP Status 400
     String VALIDATION_FAILED = "VF";
     String DUPLICATE_ID = "DI";
+    String NOT_EXISTED_USER = "NU";
 
     // HTTP Status 401
     String SIGN_IN_FAIL = "SF";
