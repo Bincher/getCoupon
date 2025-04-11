@@ -52,7 +52,7 @@ public class WebSecurityConfig {
         )
         .authorizeHttpRequests(request -> request
             .requestMatchers("/","/api/v1/auth/**").permitAll()
-            .requestMatchers(HttpMethod.GET,"/api/v1/auth/**").permitAll()
+            .requestMatchers(HttpMethod.GET,"/api/v1/auth/**", "/api/v1/coupon/**").permitAll()
             .anyRequest().authenticated()
         )
         .exceptionHandling(exceptionHandling -> exceptionHandling

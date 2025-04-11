@@ -15,9 +15,10 @@ import lombok.NoArgsConstructor;
 public class CouponEntity {
     
     @Id
-    private String id;
+    private int id;
     private String name;
-    private String amount;
-    private String start_date;
-    private String end_date;
+    private int amount;
+    private String startDate;
+    private String endDate;
+    private String couponImage;
 }
