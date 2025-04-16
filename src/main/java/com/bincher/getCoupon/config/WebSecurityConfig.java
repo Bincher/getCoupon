@@ -51,8 +51,8 @@ public class WebSecurityConfig {
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  
         )
         .authorizeHttpRequests(request -> request
-            .requestMatchers("/","/api/v1/auth/**").permitAll()
-            .requestMatchers(HttpMethod.GET,"/api/v1/auth/**", "/api/v1/coupon/**").permitAll()
+            .requestMatchers("/","/api/v1/auth/**","/file/**").permitAll()
+            .requestMatchers(HttpMethod.GET,"/api/v1/auth/**", "/api/v1/coupon/**","/file/**").permitAll()
             .anyRequest().authenticated()
         )
         .exceptionHandling(exceptionHandling -> exceptionHandling
