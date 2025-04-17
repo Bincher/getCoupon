@@ -20,19 +20,20 @@ public class JwtProvider {
     @Value("${secret-key}")
     private String secretKey;
 
-    public String create(String email){
+    public String create(String id, String role){
         Date expiredDate = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
         Key key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
 
         String jwt = Jwts.builder()
         .signWith(key, SignatureAlgorithm.HS256)
-        .setSubject(email).setIssuedAt(new Date()).setExpiration(expiredDate)
+        .setSubject(id).setIssuedAt(new Date()).setExpiration(expiredDate)
+        .claim("role", role)
         .compact(); 
 
         return jwt;
     }
 
-    public String validate(String jwt){
+    public Claims validate(String jwt){
         Claims claims = null;
         Key key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
 
@@ -47,7 +48,7 @@ public class JwtProvider {
         return null;
         }
 
-        return claims.getSubject();
+        return claims;
     }
 
 }

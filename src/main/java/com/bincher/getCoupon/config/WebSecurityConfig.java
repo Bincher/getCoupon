@@ -53,6 +53,7 @@ public class WebSecurityConfig {
         .authorizeHttpRequests(request -> request
             .requestMatchers("/","/api/v1/auth/**","/file/**").permitAll()
             .requestMatchers(HttpMethod.GET,"/api/v1/auth/**", "/api/v1/coupon/**","/file/**").permitAll()
+            .requestMatchers("/api/v1/coupon/admin/**").hasRole("ADMIN")
             .anyRequest().authenticated()
         )
         .exceptionHandling(exceptionHandling -> exceptionHandling
@@ -87,7 +88,7 @@ class FailedAuthenticationEntryPoint implements AuthenticationEntryPoint{
     
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("{\"code:\":\"AF\",\",message\":\"unauthorized failed\"}");
+        response.getWriter().write("{\"code:\":\"AF\",\"message\":\"unauthorized failed\"}");
     
     }
 

@@ -82,7 +82,8 @@ public class AuthServiceImplement implements AuthService{
             boolean isMatched = passwordEncoder.matches(password, encodedPassword);
             if(!isMatched) return SignInResponseDto.signInFailed();
 
-            token = jwtProvider.create(id);
+            String role = userEntity.getRole();
+            token = jwtProvider.create(id, role);
             
         }catch(Exception exception){
             exception.printStackTrace();
