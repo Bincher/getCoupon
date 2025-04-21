@@ -9,6 +9,10 @@ public interface ResponseCode {
     String VALIDATION_FAILED = "VF";
     String DUPLICATE_ID = "DI";
     String NOT_EXISTED_USER = "NU";
+    String NOT_EXISTED_COUPON = "NC";
+    String INSUFFICIENT_COUPON = "IC";
+    String EXPIRED_COUPON = "EC";
+    String DUPLICATED_COUPON = "DC";
 
     // HTTP Status 401
     String SIGN_IN_FAIL = "SF";

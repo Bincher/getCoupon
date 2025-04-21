@@ -31,4 +31,8 @@ public class CouponEntity {
         this.endDate = dto.getEndDate();
         this.couponImage = dto.getCouponImage();
     }
+
+    public void decreaseAmount(){
+        this.amount--;
+    }
 }
