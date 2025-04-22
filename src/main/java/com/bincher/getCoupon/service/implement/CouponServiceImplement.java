@@ -13,6 +13,7 @@ import com.bincher.getCoupon.dto.ResponseDto;
 import com.bincher.getCoupon.dto.request.coupon.PostCouponRequestDto;
 import com.bincher.getCoupon.dto.request.coupon.ReceiveCouponRequestDto;
 import com.bincher.getCoupon.dto.response.coupon.GetCouponListResponseDto;
+import com.bincher.getCoupon.dto.response.coupon.GetCouponResponseDto;
 import com.bincher.getCoupon.dto.response.coupon.PostCouponResponseDto;
 import com.bincher.getCoupon.dto.response.coupon.ReceiveCouponResponseDto;
 import com.bincher.getCoupon.entity.CouponEntity;
@@ -104,5 +105,21 @@ public class CouponServiceImplement implements CouponService{
         }
 
         return ReceiveCouponResponseDto.success();
+    }
+
+    @Override
+    public ResponseEntity<? super GetCouponResponseDto> getCoupon(int couponId) {
+
+        CouponEntity couponEntity = null;
+        try {
+            couponEntity = couponRepository.findById(couponId);
+            if(couponEntity == null) return GetCouponResponseDto.notExistedCoupon();
+
+        } catch(Exception exception){
+            exception.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+
+        return GetCouponResponseDto.success(couponEntity);
     }
 }

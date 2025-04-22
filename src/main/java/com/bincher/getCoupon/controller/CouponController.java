@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.bincher.getCoupon.dto.request.coupon.PostCouponRequestDto;
 import com.bincher.getCoupon.dto.request.coupon.ReceiveCouponRequestDto;
 import com.bincher.getCoupon.dto.response.coupon.GetCouponListResponseDto;
+import com.bincher.getCoupon.dto.response.coupon.GetCouponResponseDto;
 import com.bincher.getCoupon.dto.response.coupon.PostCouponResponseDto;
 import com.bincher.getCoupon.dto.response.coupon.ReceiveCouponResponseDto;
 import com.bincher.getCoupon.service.CouponService;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -48,6 +50,14 @@ public class CouponController {
         @AuthenticationPrincipal String id
     ){
         ResponseEntity<? super ReceiveCouponResponseDto> response = couponService.receiveCoupon(requestBody, id);
+        return response;
+    }
+
+    @GetMapping("/{couponId}")
+    public ResponseEntity<? super GetCouponResponseDto> getCoupon(
+        @PathVariable("couponId") int couponId
+    ){
+        ResponseEntity<? super GetCouponResponseDto> response = couponService.getCoupon(couponId);
         return response;
     }
 }
