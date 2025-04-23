@@ -108,11 +108,13 @@ public class CouponServiceImplement implements CouponService{
     }
 
     @Override
-    public ResponseEntity<? super GetCouponResponseDto> getCoupon(int couponId) {
+    public ResponseEntity<? super GetCouponResponseDto> getCoupon(String couponId) {
 
         CouponEntity couponEntity = null;
         try {
-            couponEntity = couponRepository.findById(couponId);
+            int id = Integer.parseInt(couponId);
+
+            couponEntity = couponRepository.findById(id);
             if(couponEntity == null) return GetCouponResponseDto.notExistedCoupon();
 
         } catch(Exception exception){

@@ -13,5 +13,5 @@ public interface CouponService {
     ResponseEntity<? super GetCouponListResponseDto> getCouponList();
     ResponseEntity<? super PostCouponResponseDto> postCoupon(PostCouponRequestDto dto);
     ResponseEntity<? super ReceiveCouponResponseDto> receiveCoupon(ReceiveCouponRequestDto dto, String userId);
-    ResponseEntity<? super GetCouponResponseDto> getCoupon(int couponId);
+    ResponseEntity<? super GetCouponResponseDto> getCoupon(String couponId);
 }

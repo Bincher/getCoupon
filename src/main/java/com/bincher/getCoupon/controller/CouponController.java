@@ -55,7 +55,7 @@ public class CouponController {
 
     @GetMapping("/{couponId}")
     public ResponseEntity<? super GetCouponResponseDto> getCoupon(
-        @PathVariable("couponId") int couponId
+        @PathVariable("couponId") String couponId
     ){
         ResponseEntity<? super GetCouponResponseDto> response = couponService.getCoupon(couponId);
         return response;
