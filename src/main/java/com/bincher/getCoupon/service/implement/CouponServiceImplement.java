@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.bincher.getCoupon.dto.ResponseDto;
 import com.bincher.getCoupon.dto.request.coupon.PostCouponRequestDto;
@@ -23,6 +24,7 @@ import com.bincher.getCoupon.entity.UserEntity;
 import com.bincher.getCoupon.repository.CouponEventRepository;
 import com.bincher.getCoupon.repository.CouponRepository;
 import com.bincher.getCoupon.repository.UserRepository;
+import com.bincher.getCoupon.service.CouponLockService;
 import com.bincher.getCoupon.service.CouponService;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CouponServiceImplement implements CouponService{
 
+    private final CouponLockService couponLockService;
     private final CouponRepository couponRepository;
     private final CouponEventRepository couponEventRepository;
     private final UserRepository userRepository;
@@ -123,5 +126,37 @@ public class CouponServiceImplement implements CouponService{
         }
 
         return GetCouponResponseDto.success(couponEntity);
+    }
+
+    @Transactional
+    public ResponseEntity<? super ReceiveCouponResponseDto> issueCoupon(ReceiveCouponRequestDto dto, String userId) {
+
+        CouponEntity couponEntity = null;
+        int couponId = dto.getCouponId();
+        couponEntity = couponRepository.findById(couponId);
+        
+        try {
+            
+            if(couponEntity == null) return ReceiveCouponResponseDto.notExistedCoupon();
+            if (!couponLockService.tryAcquireLock(couponId)) {
+                throw new RuntimeException("쿠폰 발급 중입니다. 잠시 후 다시 시도해주세요.");
+            }    
+
+            CouponEntity coupon = couponRepository.findById(couponId);
+
+            if (coupon.getAmount() <= 0) {
+                throw new RuntimeException("쿠폰이 모두 소진되었습니다.");
+            }
+
+            coupon.decreaseAmount();
+            couponRepository.save(coupon);
+
+            CouponEventEntity couponEventEntity = new CouponEventEntity(couponId, userId);
+            couponEventRepository.save(couponEventEntity);
+        } finally {
+            couponLockService.releaseLock(couponId);
+        }
+
+        return ReceiveCouponResponseDto.success();
     }
 }

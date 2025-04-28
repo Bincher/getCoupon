@@ -3,6 +3,7 @@ package com.bincher.getCoupon.controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.bincher.getCoupon.dto.ResponseDto;
 import com.bincher.getCoupon.dto.request.coupon.PostCouponRequestDto;
 import com.bincher.getCoupon.dto.request.coupon.ReceiveCouponRequestDto;
 import com.bincher.getCoupon.dto.response.coupon.GetCouponListResponseDto;
@@ -59,5 +60,25 @@ public class CouponController {
     ){
         ResponseEntity<? super GetCouponResponseDto> response = couponService.getCoupon(couponId);
         return response;
+    }
+
+    @PostMapping("/receive")
+    public ResponseEntity<? super ReceiveCouponResponseDto> receiveLockCoupon(
+        @RequestBody @Valid ReceiveCouponRequestDto requestBody,
+        @AuthenticationPrincipal String userId
+    ) {
+        try {
+            // 쿠폰 ID와 사용자 ID를 서비스의 issueCoupon 메서드에 전달
+            couponService.issueCoupon(requestBody, userId);
+            return ReceiveCouponResponseDto.success();
+        } catch (RuntimeException e) {
+            // 예외 메시지에 따라 응답 처리
+            if (e.getMessage().contains("쿠폰이 모두 소진되었습니다")) {
+                return ReceiveCouponResponseDto.insufficientCoupon();
+            } else if (e.getMessage().contains("쿠폰 발급 중입니다")) {
+                return ReceiveCouponResponseDto.duplicatedCoupon();
+            }
+            return ResponseDto.databaseError();
+        }
     }
 }

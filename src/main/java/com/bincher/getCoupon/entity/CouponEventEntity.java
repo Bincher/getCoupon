@@ -44,4 +44,15 @@ public class CouponEventEntity {
         this.couponId = dto.getCouponId();
         this.createdDate = createdDatetime;
     }
+
+    public CouponEventEntity(int id, String userId){
+
+        Date now = Date.from(Instant.now());
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String createdDatetime = simpleDateFormat.format(now);
+
+        this.userId = userId;
+        this.couponId = id;
+        this.createdDate = createdDatetime;
+    }
 }
