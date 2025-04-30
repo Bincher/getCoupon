@@ -5,10 +5,15 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.bincher.getCoupon.dto.ResponseDto;
 import com.bincher.getCoupon.dto.request.coupon.PostCouponRequestDto;
@@ -24,7 +29,6 @@ import com.bincher.getCoupon.entity.UserEntity;
 import com.bincher.getCoupon.repository.CouponEventRepository;
 import com.bincher.getCoupon.repository.CouponRepository;
 import com.bincher.getCoupon.repository.UserRepository;
-import com.bincher.getCoupon.service.CouponLockService;
 import com.bincher.getCoupon.service.CouponService;
 
 import lombok.RequiredArgsConstructor;
@@ -33,10 +37,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CouponServiceImplement implements CouponService{
 
-    private final CouponLockService couponLockService;
     private final CouponRepository couponRepository;
     private final CouponEventRepository couponEventRepository;
     private final UserRepository userRepository;
+
+    private final RedissonClient redissonClient;
 
     @Override
     public ResponseEntity<? super GetCouponListResponseDto> getCouponList() {
@@ -130,33 +135,64 @@ public class CouponServiceImplement implements CouponService{
 
     @Transactional
     public ResponseEntity<? super ReceiveCouponResponseDto> issueCoupon(ReceiveCouponRequestDto dto, String userId) {
-
-        CouponEntity couponEntity = null;
-        int couponId = dto.getCouponId();
-        couponEntity = couponRepository.findById(couponId);
-        
+        RLock lock = redissonClient.getLock("COUPON_LOCK:" + dto.getCouponId());
+        boolean isLocked = false;
         try {
-            
-            if(couponEntity == null) return ReceiveCouponResponseDto.notExistedCoupon();
-            if (!couponLockService.tryAcquireLock(couponId)) {
-                throw new RuntimeException("쿠폰 발급 중입니다. 잠시 후 다시 시도해주세요.");
-            }    
-
-            CouponEntity coupon = couponRepository.findById(couponId);
-
-            if (coupon.getAmount() <= 0) {
-                throw new RuntimeException("쿠폰이 모두 소진되었습니다.");
+            // 1. 락 획득 (10초 대기, 10초 유지)
+            isLocked = lock.tryLock(10, 10, TimeUnit.SECONDS);
+            if (!isLocked) {
+                return ReceiveCouponResponseDto.duplicatedCoupon();
             }
 
-            coupon.decreaseAmount();
-            couponRepository.save(coupon);
+            // 2. 유저 및 쿠폰 존재 여부 확인
+            UserEntity userEntity = userRepository.findById(userId);
+            if (userEntity == null) return ReceiveCouponResponseDto.notExistedUser();
 
-            CouponEventEntity couponEventEntity = new CouponEventEntity(couponId, userId);
-            couponEventRepository.save(couponEventEntity);
-        } finally {
-            couponLockService.releaseLock(couponId);
+            CouponEntity couponEntity = couponRepository.findById(dto.getCouponId());
+            if (couponEntity == null) return ReceiveCouponResponseDto.notExistedCoupon();
+
+            // 3. 유효기간 검증
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            Date endDate = simpleDateFormat.parse(couponEntity.getEndDate());
+            if (endDate.before(new Date())) {
+                return ReceiveCouponResponseDto.expiredCoupon();
+            }
+
+            // 4. 중복 발급 방지
+            UserCouponId userCouponId = new UserCouponId(userId, dto.getCouponId());
+            if (couponEventRepository.existsById(userCouponId)) {
+                return ReceiveCouponResponseDto.duplicatedCoupon();
+            }
+
+            // 5. 재고 감소 및 이력 저장
+            couponEntity.decreaseAmount();
+            couponRepository.save(couponEntity);
+            couponEventRepository.save(new CouponEventEntity(dto.getCouponId(), userId));
+
+            // 6. 트랜잭션 완료 후 락 해제
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronizationAdapter() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (lock.isHeldByCurrentThread()) {
+                            lock.unlock();
+                        }
+                    }
+                }
+            );
+
+            return ReceiveCouponResponseDto.success();
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseDto.databaseError();
+        } catch (Exception e) {
+            // 트랜잭션 롤백 시 락 해제
+            if (isLocked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+            return ResponseDto.databaseError();
         }
-
-        return ReceiveCouponResponseDto.success();
     }
+
 }

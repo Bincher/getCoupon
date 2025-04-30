@@ -10,4 +10,5 @@ public interface CouponRepository extends JpaRepository<CouponEntity, Integer> {
 
     List<CouponEntity> findByOrderByIdDesc();
     CouponEntity findById(int id);
+
 }
