@@ -9,12 +9,12 @@ import com.bincher.getCoupon.dto.ResponseDto;
 
 public class ReceiveCouponResponseDto extends ResponseDto{
     
-    private ReceiveCouponResponseDto(){
+    private ReceiveCouponResponseDto(int position){
         super(ResponseCode.SUCCESS, ResponseMessage.SUCCESS);
     }
 
     public static ResponseEntity<ReceiveCouponResponseDto> success(){
-        ReceiveCouponResponseDto result = new ReceiveCouponResponseDto();
+        ReceiveCouponResponseDto result = new ReceiveCouponResponseDto(0);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
@@ -41,10 +41,5 @@ public class ReceiveCouponResponseDto extends ResponseDto{
     public static ResponseEntity<ResponseDto> duplicatedCoupon(){
         ResponseDto result = new ResponseDto(ResponseCode.DUPLICATED_COUPON, ResponseMessage.DUPLICATED_COUPON);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
-    }
-
-    public static ResponseEntity<ResponseDto> waitingQueue() {
-        ResponseDto result = new ResponseDto(ResponseCode.WATTING_QUEUE, ResponseMessage.WATTING_QUEUE);
-        return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 }
