@@ -42,4 +42,9 @@ public class ReceiveCouponResponseDto extends ResponseDto{
         ResponseDto result = new ResponseDto(ResponseCode.DUPLICATED_COUPON, ResponseMessage.DUPLICATED_COUPON);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
     }
+
+    public static ResponseEntity<ResponseDto> waitingQueue() {
+        ResponseDto result = new ResponseDto(ResponseCode.WATTING_QUEUE, ResponseMessage.WATTING_QUEUE);
+        return ResponseEntity.status(HttpStatus.OK).body(result);
+    }
 }

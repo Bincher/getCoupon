@@ -61,12 +61,21 @@ public class CouponController {
         return response;
     }
 
-    @PostMapping("/receive")
-    public ResponseEntity<? super ReceiveCouponResponseDto> receiveLockCoupon(
-        @RequestBody @Valid ReceiveCouponRequestDto requestBody,
-        @AuthenticationPrincipal String id
+    @PostMapping("/event/queue")
+    public ResponseEntity<? super ReceiveCouponResponseDto> receiveCouponWithQueue(
+            @RequestBody @Valid ReceiveCouponRequestDto requestBody,
+            @AuthenticationPrincipal String id
     ) {
-        ResponseEntity<? super ReceiveCouponResponseDto> response = couponService.issueCoupon(requestBody, id);
+        ResponseEntity<? super ReceiveCouponResponseDto> response = couponService.receiveCouponWithQueue(requestBody, id);
+        return response;
+    }
+
+    @PostMapping("/event/redis")
+    public ResponseEntity<? super ReceiveCouponResponseDto> receiveCouponWithRedisLua(
+            @RequestBody @Valid ReceiveCouponRequestDto requestBody,
+            @AuthenticationPrincipal String id
+    ) {
+        ResponseEntity<? super ReceiveCouponResponseDto> response = couponService.receiveCouponWithRedisLua(requestBody, id);
         return response;
     }
 }

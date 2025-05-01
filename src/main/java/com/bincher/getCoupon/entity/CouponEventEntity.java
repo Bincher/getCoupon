@@ -14,8 +14,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Getter
+@Getter@Setter
 @Entity(name="coupon_event")
 @Table(name="coupon_event")
 @NoArgsConstructor

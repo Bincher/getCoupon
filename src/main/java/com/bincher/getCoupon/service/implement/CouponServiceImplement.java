@@ -3,17 +3,18 @@ package com.bincher.getCoupon.service.implement;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import org.redisson.api.RLock;
+import org.redisson.api.RBucket;
+import org.redisson.api.RList;
+import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.bincher.getCoupon.dto.ResponseDto;
 import com.bincher.getCoupon.dto.request.coupon.PostCouponRequestDto;
@@ -40,8 +41,10 @@ public class CouponServiceImplement implements CouponService{
     private final CouponRepository couponRepository;
     private final CouponEventRepository couponEventRepository;
     private final UserRepository userRepository;
+    private final RedissonClient redissonClient; 
 
-    private final RedissonClient redissonClient;
+    private static final String COUPON_STOCK_KEY_PREFIX = "coupon_stock:";
+    private static final String COUPON_USERS_KEY_PREFIX = "coupon_users:";
 
     @Override
     public ResponseEntity<? super GetCouponListResponseDto> getCouponList() {
@@ -133,66 +136,112 @@ public class CouponServiceImplement implements CouponService{
         return GetCouponResponseDto.success(couponEntity);
     }
 
-    @Transactional
-    public ResponseEntity<? super ReceiveCouponResponseDto> issueCoupon(ReceiveCouponRequestDto dto, String userId) {
-        RLock lock = redissonClient.getLock("COUPON_LOCK:" + dto.getCouponId());
-        boolean isLocked = false;
+    @Override
+    public ResponseEntity<? super ReceiveCouponResponseDto> receiveCouponWithQueue(ReceiveCouponRequestDto dto, String userId) {
         try {
-            // 1. 락 획득 (10초 대기, 10초 유지)
-            isLocked = lock.tryLock(10, 10, TimeUnit.SECONDS);
-            if (!isLocked) {
-                return ReceiveCouponResponseDto.duplicatedCoupon();
-            }
+            int couponId = dto.getCouponId();
+            String queueKey = "coupon_queue:" + couponId;
+            String resultKey = "coupon_result:" + couponId + ":" + userId;
 
-            // 2. 유저 및 쿠폰 존재 여부 확인
-            UserEntity userEntity = userRepository.findById(userId);
-            if (userEntity == null) return ReceiveCouponResponseDto.notExistedUser();
-
-            CouponEntity couponEntity = couponRepository.findById(dto.getCouponId());
-            if (couponEntity == null) return ReceiveCouponResponseDto.notExistedCoupon();
-
-            // 3. 유효기간 검증
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            Date endDate = simpleDateFormat.parse(couponEntity.getEndDate());
-            if (endDate.before(new Date())) {
-                return ReceiveCouponResponseDto.expiredCoupon();
-            }
-
-            // 4. 중복 발급 방지
-            UserCouponId userCouponId = new UserCouponId(userId, dto.getCouponId());
-            if (couponEventRepository.existsById(userCouponId)) {
-                return ReceiveCouponResponseDto.duplicatedCoupon();
-            }
-
-            // 5. 재고 감소 및 이력 저장
-            couponEntity.decreaseAmount();
-            couponRepository.save(couponEntity);
-            couponEventRepository.save(new CouponEventEntity(dto.getCouponId(), userId));
-
-            // 6. 트랜잭션 완료 후 락 해제
-            TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronizationAdapter() {
-                    @Override
-                    public void afterCompletion(int status) {
-                        if (lock.isHeldByCurrentThread()) {
-                            lock.unlock();
-                        }
-                    }
+            // 이미 대기열에 등록된 유저는 중복 등록 방지
+            RBucket<String> resultBucket = redissonClient.getBucket(resultKey);
+            if (resultBucket.isExists()) {
+                String result = resultBucket.get();
+                if ("SUCCESS".equals(result)) {
+                    return ReceiveCouponResponseDto.duplicatedCoupon();
+                } else if ("INSUFFICIENT".equals(result)) {
+                    return ReceiveCouponResponseDto.insufficientCoupon();
+                } else if ("QUEUED".equals(result)) {
+                    return ReceiveCouponResponseDto.waitingQueue();
                 }
-            );
-
-            return ReceiveCouponResponseDto.success();
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResponseDto.databaseError();
-        } catch (Exception e) {
-            // 트랜잭션 롤백 시 락 해제
-            if (isLocked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
             }
+
+            // 대기열에 userId 등록 (이미 있으면 추가하지 않음)
+            RList<String> queue = redissonClient.getList(queueKey);
+            if (!queue.contains(userId)) {
+                queue.add(userId);
+            }
+
+            // 대기 상태 기록
+            resultBucket.set("QUEUED");
+
+            // 즉시 발급 결과를 반환하지 않고, "대기열 등록 완료"만 응답
+            return ReceiveCouponResponseDto.waitingQueue();
+
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseDto.databaseError();
         }
     }
 
+
+    @Override
+    public ResponseEntity<? super ReceiveCouponResponseDto> receiveCouponWithRedisLua(ReceiveCouponRequestDto dto, String userId) {
+        try {
+            // 1. 유저, 쿠폰 유효성 체크 (DB)
+            UserEntity userEntity = userRepository.findById(userId);
+            if (userEntity == null) return ReceiveCouponResponseDto.notExistedUser();
+
+            int couponId = dto.getCouponId();
+            CouponEntity couponEntity = couponRepository.findById(couponId);
+            if (couponEntity == null) return ReceiveCouponResponseDto.notExistedCoupon();
+
+            Date now = Date.from(Instant.now());
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Date endDate = sdf.parse(couponEntity.getEndDate());
+            if (endDate.before(now)) return ReceiveCouponResponseDto.expiredCoupon();
+
+            // 2. Redis Lua Script로 원자적 발급 시도
+            String stockKey = COUPON_STOCK_KEY_PREFIX + couponId;
+            String usersKey = COUPON_USERS_KEY_PREFIX + couponId;
+
+            RScript rScript = redissonClient.getScript();
+            String luaScript =
+                "if redis.call('SISMEMBER', KEYS[2], ARGV[1]) == 1 then " +
+                    "return -1 " +
+                "end " +
+                "local stock = tonumber(redis.call('GET', KEYS[1])) " +
+                "if stock == nil or stock <= 0 then " +
+                    "return 0 " +
+                "end " +
+                "redis.call('DECR', KEYS[1]) " +
+                "redis.call('SADD', KEYS[2], ARGV[1]) " +
+                "return 1";
+
+            List<Object> keys = Arrays.asList(stockKey, usersKey);
+            Object result = rScript.eval(
+                    RScript.Mode.READ_WRITE,
+                    luaScript,
+                    RScript.ReturnType.INTEGER,
+                    keys,
+                    userId
+            );
+            int luaResult = ((Number) result).intValue();
+
+            if (luaResult == -1) {
+                return ReceiveCouponResponseDto.duplicatedCoupon();
+            } else if (luaResult == 0) {
+                return ReceiveCouponResponseDto.insufficientCoupon();
+            }
+
+            // 3. DB에 발급 내역 저장 (이중화)
+            CouponEventEntity couponEventEntity = new CouponEventEntity(dto, userId);
+            couponEventRepository.save(couponEventEntity);
+
+            return ReceiveCouponResponseDto.success();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+    }
+
+    // 쿠폰 등록 시 Redis 재고 초기화 메소드 (관리자 쿠폰 등록 시 호출)
+    public void setCouponStockToRedis(int couponId, int amount) {
+        String stockKey = "coupon_stock:" + couponId;
+        redissonClient.getBucket(stockKey).set(amount);
+        // 유저 발급 기록도 초기화(테스트 반복시 필요)
+        String usersKey = "coupon_users:" + couponId;
+        redissonClient.getSet(usersKey).clear();
+    }
 }

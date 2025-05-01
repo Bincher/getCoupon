@@ -4,6 +4,7 @@ public interface ResponseCode {
 
     // HTTP Status 200
     String SUCCESS = "SU";
+    String WATTING_QUEUE = "WQ";
 
     // HTTP Status 400
     String VALIDATION_FAILED = "VF";

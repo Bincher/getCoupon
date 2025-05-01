@@ -4,6 +4,7 @@ public interface ResponseMessage {
     
     // HTTP Status 200
     String SUCCESS = "Success";
+    String WATTING_QUEUE = "Wating Queue";
 
     // HTTP Status 400
     String VALIDATION_FAILED = "Validation failed";
